@@ -1,4 +1,4 @@
-../components/config.py
-db
-../components/pogoda.py
+components/config.py
+db.db
+components/pogoda.py
 bd_testing.py
