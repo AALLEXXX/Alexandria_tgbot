@@ -1,4 +1,4 @@
 ../components/config.py
 db
 ../components/pogoda.py
-alexandria_alpha /bd_testing.py
+bd_testing.py
