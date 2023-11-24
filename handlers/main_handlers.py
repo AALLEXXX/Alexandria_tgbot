@@ -1,7 +1,6 @@
-
 from aiogram import types
 from aiogram.utils.keyboard import InlineKeyboardBuilder
-from aiogram import Router, F
+from aiogram import Router
 from create_bot import bot, db
 from aiogram.enums.chat_type import ChatType
 from aiogram.filters import Command
@@ -10,12 +9,18 @@ from aiogram.filters import CommandStart
 main_router = Router()
 
 
-# обработчик комнады старт
 @main_router.message(CommandStart())
 async def start_command(message: types.Message):
-    # weather = types.InlineKeyboardButton(text="💫Погода💫", callback_data="pogoda")
+    """
+    Обработчик команды /start.
+
+    Args:
+        message (types.Message): Объект сообщения.
+
+    Returns:
+        None
+    """
     builder = InlineKeyboardBuilder()
-    # проверяем если активный чат отсутствует тогда даем доступ к кнопкам поиска
     if db.check_user_in_queue(message.chat.id) is False and db.check_active_chat(message.chat.id) is False:
         anon_chat1 = types.InlineKeyboardButton(text="Анонимный чат👁🌐", callback_data="anon_chat")
         builder.add(anon_chat1)
@@ -24,11 +29,18 @@ async def start_command(message: types.Message):
         await message.answer(text='Привет!')
 
 
-# обработчик команды стоп, нужен чтобы остановить активный чат
 @main_router.message(Command('stop'))
 async def stop_chat_command(message: types.Message):
+    """
+    Обработчик команды /stop.
+
+    Args:
+        message (types.Message): Объект сообщения.
+
+    Returns:
+        None
+    """
     act_chat = db.get_active_chat(message.chat.id)
-    # проверяем чат на активность если он еще активен то прощаемся и останавливаем его удалив из базы данных
     if db.check_active_chat(message.chat.id):
         await bot.send_message(act_chat[2], 'Ваш собеседник покинул чат😔')
         await bot.send_message(act_chat[2], 'Чат завершен📴')
@@ -39,65 +51,22 @@ async def stop_chat_command(message: types.Message):
         await bot.send_message(message.chat.id, '⛔У вас нет активного чата⛔️')
 
 
-# дальше идут обработчики различных типов сообщения для общения в активном чате
+# ==================================================================================
 
+async def anon_chat_but(callback_query: types.CallbackQuery):
+    """
+    Обработчик кнопки "Анонимный чат👁🌐".
 
-# конфликт проверки чек чат в обработчиках и остальных функциях
-@main_router.message(F.photo)
-async def handle_photo_message(message: types.Message):
-    act_chat = db.get_active_chat(message.chat.id)
-    if db.check_active_chat(message.chat.id):
-        await bot.send_photo(act_chat[2], photo=message.photo[-1].file_id)
+    Args:
+        callback_query (types.CallbackQuery): Объект callback_query.
 
-
-@main_router.message(F.audio)
-async def handle_audio_message(message: types.Message):
-    act_chat = db.get_active_chat(message.chat.id)
-    if db.check_active_chat(message.chat.id):
-        await bot.send_audio(act_chat[2], message.audio.file_id)
-
-
-@main_router.message(F.video)
-async def handle_video_message(message: types.Message):
-    act_chat = db.get_active_chat(message.chat.id)
-    if db.check_active_chat(message.chat.id):
-        await bot.send_video(act_chat[2], message.video.file_id)
-
-
-@main_router.message(F.video_note)
-async def handle_video_circe_message(message: types.Message):
-    act_chat = db.get_active_chat(message.chat.id)
-    if db.check_active_chat(message.chat.id):
-        await bot.send_video_note(act_chat[2], message.video_note.file_id)
-
-
-@main_router.message(F.sticker)
-async def handle_stikers_message(message: types.Message):
-    act_chat = db.get_active_chat(message.chat.id)
-    if db.check_active_chat(message.chat.id):
-        await bot.send_sticker(act_chat[2], message.sticker.file_id)
-
-
-@main_router.message(F.voice)
-async def handle_voice_message(message: types.Message):
-    act_chat = db.get_active_chat(message.chat.id)
-    if db.check_active_chat(message.chat.id):
-        await bot.send_voice(act_chat[2], message.voice.file_id)
-
-
-@main_router.message(F.text)
-async def anon_chat(message: types.Message):
-    act_chat = db.get_active_chat(message.chat.id)
-    if db.check_active_chat(message.chat.id):
-        await bot.send_message(act_chat[2], message.text)
-
-
-async def anon_chat_but(callback_query):
-    await bot.delete_message(chat_id=callback_query.message.chat.id,
-                             message_id=callback_query.message.message_id)
+    Returns:
+        None
+    """
+    msg = callback_query.message
+    await msg.delete()
 
     keyboard = InlineKeyboardBuilder()
-
     looking = types.InlineKeyboardButton(text="Найти собеседника🔮", callback_data="gender selection")
     return_but = types.InlineKeyboardButton(text="вернуться↩", callback_data="return")
 
@@ -106,10 +75,19 @@ async def anon_chat_but(callback_query):
     await bot.send_message(callback_query.from_user.id, "Анонимный чат👁🌐", reply_markup=keyboard.as_markup())
 
 
-async def queue_with_reg(callback_query):
+async def queue_with_reg(callback_query: types.CallbackQuery):
+    """
+    Обработчик кнопки "gender selection" для запуска процесса регистрации.
+
+    Args:
+        callback_query (types.CallbackQuery): Объект callback_query.
+
+    Returns:
+        None
+    """
+    msg = callback_query.message
     if db.get_sex(callback_query.message.chat.id) is False:
-        await bot.delete_message(chat_id=callback_query.message.chat.id,
-                                 message_id=callback_query.message.message_id)
+        await msg.delete()
 
         keyboard = InlineKeyboardBuilder()
 
@@ -121,8 +99,7 @@ async def queue_with_reg(callback_query):
                                reply_markup=keyboard.as_markup())
 
     else:
-        await bot.delete_message(chat_id=callback_query.message.chat.id,
-                                 message_id=callback_query.message.message_id)
+        await msg.delete()
 
         keyboard = InlineKeyboardBuilder()
 
@@ -137,10 +114,10 @@ async def queue_with_reg(callback_query):
     # конец обработчиков сообщений для чата
 
 
-async def waiting(callback_query, chat_id, sex):
+async def waiting(callback_query: types.CallbackQuery, chat_id, sex):
+    msg = callback_query.message
     db.add_queue(chat_id, sex)
-    await bot.delete_message(chat_id=callback_query.message.chat.id,
-                             message_id=callback_query.message.message_id)
+    await msg.delete()
 
     keyboard = InlineKeyboardBuilder()
     stop_queue = types.InlineKeyboardButton(text="❌Остановить поиск❌", callback_data="stop_queue")
@@ -177,72 +154,35 @@ async def queue(callback_query, sex):
         await bot.send_message(callback_query.from_user.id, "хватит дудосить")
 
 
-async def return_func(callback_query):
-    chat_id = callback_query.message.chat.id
-    await bot.delete_message(chat_id=callback_query.message.chat.id,
-                             message_id=callback_query.message.message_id)
-    keyboard = InlineKeyboardBuilder()
-    weather = types.InlineKeyboardButton(text="💫Погода💫", callback_data="pogoda")
-    # проверка чата на активность
-    if db.check_user_in_queue(chat_id) is False and db.check_active_chat(chat_id) is False:
-        anon_chat1 = types.InlineKeyboardButton(text="Анонимный чат👁🌐", callback_data="anon_chat")
-        keyboard.add(weather, anon_chat1)
-    else:
-        keyboard.add(weather)
-    await bot.send_message(callback_query.from_user.id, "Привет! 🖖", reply_markup=keyboard.as_markup())
-
-
-# Обработчик нажатий на кнопки
 @main_router.callback_query()
 async def process_callback_button(callback_query: types.CallbackQuery):
     chat_type = callback_query.message.chat.type
-    # проверяем что бот находит в личном чате с пользователем а не в группе
-    if chat_type == ChatType.PRIVATE:
-        # Получение данных из нажатой кнопки
-        button_data = callback_query.data
-        chat_id = callback_query.message.chat.id
-        if button_data == 'return':
-            await return_func(callback_query)
-        #
-        # if button_data == "pogoda":
-        #     await show_pogoda(callback_query)
-        #
-        # elif button_data == "pogoda_moscow":
-        #     url = 'https://world-weather.ru/pogoda/russia/moscow/'
-        #     await bot.send_message(callback_query.from_user.id, get_weather(url) + " в Москве на данный момент")
-        # elif button_data == "pogoda_sp":
-        #     url = 'https://world-weather.ru/pogoda/russia/saint_petersburg/'
-        #     await bot.send_message(callback_query.from_user.id, get_weather(url) + " в Питере на данный момент")
-        # elif button_data == "pogoda_sev":
-        #     url = 'https://world-weather.ru/pogoda/russia/sevastopol/'
-        #     await bot.send_message(callback_query.from_user.id, get_weather(url) + " в Севастополе на данный момент")
+    msg = callback_query.message
 
-        if button_data == 'anon_chat':
+    if chat_type == ChatType.PRIVATE:
+        data = callback_query.data
+        chat_id = callback_query.message.chat.id
+        if data == 'return':
+            await msg.delete()
+            await start_command(msg)
+
+        elif data == 'anon_chat':
             await anon_chat_but(callback_query)
 
-        if button_data == 'gender selection':
+        elif data == 'gender selection':
             await queue_with_reg(callback_query)
 
-        if button_data == 'reg_guy':
+        elif data == 'reg_guy' or data == 'reg_girl':
+            sex = data.split('_')[1]
             await bot.send_message(callback_query.from_user.id, "✅Успешная регистрация!✅")
             await anon_chat_but(callback_query)
-            db.add_sex(chat_id, 'guy')
+            db.add_sex(chat_id, f'{sex}')
 
-        if button_data == 'reg_girl':
-            await bot.send_message(callback_query.from_user.id, "✅Успешная регистрация!✅")
-            await anon_chat_but(callback_query)
-            db.add_sex(chat_id, 'girl')
+        elif data == 'sex_guy' or data == 'sex_girl' or data == 'sex_any':
+            sex = data.split('_')[1]
+            await queue(callback_query, f'{sex}')
 
-        if button_data == 'sex_guy':
-            await queue(callback_query, 'guy')
-
-        if button_data == 'sex_girl':
-            await queue(callback_query, 'girl')
-
-        if button_data == 'sex_any':
-            await queue(callback_query, 'any')
-
-        if button_data == 'stop_queue':
+        elif data == 'stop_queue':
             await bot.delete_message(chat_id=callback_query.message.chat.id,
                                      message_id=db.get_sticker_id(chat_id))
             chat_id = callback_query.message.chat.id
@@ -253,6 +193,3 @@ async def process_callback_button(callback_query: types.CallbackQuery):
             return_but = types.InlineKeyboardButton(text="вернуться↩️", callback_data="return")
             keyboard.add(return_but)
             await bot.send_message(callback_query.from_user.id, "❌поиск остановлен❌", reply_markup=keyboard.as_markup())
-
-
-
